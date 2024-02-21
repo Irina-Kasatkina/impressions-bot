@@ -78,7 +78,7 @@ async def handle_start_command(
     context: ContextTypes.DEFAULT_TYPE
 ) -> int:
     """Handle the start command."""
-    text = 'Выбери, пожалуйста, язык / Please, select language'
+    text = 'Выбери, пожалуйста, язык / Please select a language'
     keyboard = [[
         InlineKeyboardButton('🇷🇺 Русский', callback_data='russian'),
         InlineKeyboardButton('🇬🇧 English', callback_data='english')
@@ -129,7 +129,9 @@ async def send_main_menu(
     text = f'{text}{message}'
     keyboard = [
         [
-            InlineKeyboardButton(buttons[0], callback_data='impression'),
+            InlineKeyboardButton(buttons[0], callback_data='impression')
+        ],
+        [
             InlineKeyboardButton(buttons[1], callback_data='certificate')
         ],
         [
