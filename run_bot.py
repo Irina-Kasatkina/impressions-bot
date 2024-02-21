@@ -334,12 +334,14 @@ async def send_impressions_menu(
         await update.callback_query.edit_message_text(
             text,
             parse_mode='MarkdownV2',
+            disable_web_page_preview=True
         )
         return SELECTING_IMPRESSION
 
     await update.message.reply_text(
         text=text,
         parse_mode='MarkdownV2',
+        disable_web_page_preview=True
     )
     return SELECTING_IMPRESSION
 
