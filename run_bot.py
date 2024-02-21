@@ -19,14 +19,13 @@ from telegram.ext import (
 )
 
 
-(START, SELECTING_LANGUAGE, MAIN_MENU, SELECTING_IMPRESSION,
- SELECTING_RECEIVING_METHOD, WAITING_CUSTOMER_EMAIL, ACQUAINTED_PRIVACY_POLICY,
- WAITING_CUSTOMER_FULLNAME, WAITING_CUSTOMER_PHONE,
- WAITING_PAYMENT_SCREENSHOT, DIALOGUE_END,
- SELECTING_DELIVERY_METHOD, WAITING_RECIPIENT_FULLNAME,
- WAITING_RECIPIENT_CONTACT, CONFIRMING_SELF_DELIVERY,
- WAITING_CERTIFICATE_ID, WRONG_CERTIFICATE_MENU,
- SELECTING_QUESTION, ANSWER_MENU) = range(1, 20)
+(START, SELECTING_LANGUAGE, MAIN_MENU, SELECTING_IMPRESSIONS_CATEGORY,
+ SELECTING_IMPRESSION, SELECTING_RECEIVING_METHOD, WAITING_CUSTOMER_EMAIL,
+ ACQUAINTED_PRIVACY_POLICY, WAITING_CUSTOMER_FULLNAME, WAITING_CUSTOMER_PHONE,
+ WAITING_PAYMENT_SCREENSHOT, DIALOGUE_END, SELECTING_DELIVERY_METHOD,
+ WAITING_RECIPIENT_FULLNAME, WAITING_RECIPIENT_CONTACT,
+ CONFIRMING_SELF_DELIVERY, WAITING_CERTIFICATE_ID, WRONG_CERTIFICATE_MENU,
+ SELECTING_QUESTION, ANSWER_MENU) = range(1, 21)
 
 
 async def handle_users_reply(
@@ -46,6 +45,7 @@ async def handle_users_reply(
         START: handle_start_command,
         SELECTING_LANGUAGE: handle_language_menu,
         MAIN_MENU: handle_main_menu,
+        SELECTING_IMPRESSIONS_CATEGORY: handle_impressions_categories_menu,
         SELECTING_IMPRESSION: handle_impressions_menu,
         SELECTING_RECEIVING_METHOD: handle_receiving_methods_menu,
         WAITING_CUSTOMER_EMAIL: handle_customer_email_message,
@@ -128,15 +128,9 @@ async def send_main_menu(
 
     text = f'{text}{message}'
     keyboard = [
-        [
-            InlineKeyboardButton(buttons[0], callback_data='impression')
-        ],
-        [
-            InlineKeyboardButton(buttons[1], callback_data='certificate')
-        ],
-        [
-            InlineKeyboardButton(buttons[2], callback_data='faq')
-        ]
+        [InlineKeyboardButton(buttons[0], callback_data='impression')],
+        [InlineKeyboardButton(buttons[1], callback_data='certificate')],
+        [InlineKeyboardButton(buttons[2], callback_data='faq')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     if update.callback_query:
@@ -163,7 +157,7 @@ async def handle_main_menu(
     await update.callback_query.answer()
 
     if update.callback_query.data == 'impression':
-        next_state = await send_impressions_menu(update, context)
+        next_state = await send_impressions_categories_menu(update, context)
         return next_state
 
     if update.callback_query.data == 'certificate':
@@ -190,67 +184,59 @@ def get_misunderstanding_message(language: str) -> str:
     return text
 
 
-async def send_impressions_menu(
+async def send_impressions_categories_menu(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
     text: str = ''
 ) -> int:
-    """Send Impressions menu."""
-    impressions = await Database.get_impressions(context.chat_data['language'])
-    if not impressions:
-        if context.chat_data['language'] == 'russian':
-            text = 'Извини, впечатлений пока нет.\n'
-        else:
-            text = 'Sorry, no impressions yet.\n'
-        next_state = await send_main_menu(update, context, text)
-        return next_state
-
+    """Send Impressions Categories menu."""
     if context.chat_data['language'] == 'russian':
-        text = f'{normalise_text(text)}Выбери впечатление:\n\n'
-        button = '« Вернуться в главное меню'
+        text = (
+            text +
+            'Для твоего удобства мы разделили подарки по нескольким '
+            'категориям:'
+            '\n\n'
+        )
+        buttons = [
+            'Для мужчин',
+            'Для девушек',
+            'Для пар',
+            'Посмотреть все',
+            '« Вернуться в главное меню',
+        ]
     else:
-        text = f'{normalise_text(text)}Choose an impression:\n\n'
-        button = '« Back to main menu'
+        text = (
+            text +
+            "For your convenience, we have divided gifts into several "
+            "categories:"
+            "\n\n"
+        )
+        buttons = [
+            'For Men',
+            'For Girls',
+            'For Couples',
+            'View All',
+            '« Back to main menu'
+        ]
 
     keyboard = []
-    buttons_in_row = calculate_buttons_in_row(buttons_count=len(impressions))
-    for impression_index, impression in enumerate(impressions):
-        impression_title = normalise_text(make_impression_title(impression))
-        text += f"[{impression_title}]({impression['url']})\n"
-        if not (impression_index % buttons_in_row):
-            keyboard.append([])
-        keyboard[-1].append(InlineKeyboardButton(
-            f"{impression['number']}",
-            callback_data=f"{impression['id']}")
-        )
+    callbacks = ['man', 'girl', 'couple', 'all', 'main_menu']
+    for button, callback in zip(buttons, callbacks):
+        keyboard.append([InlineKeyboardButton(button, callback_data=callback)])
 
-    keyboard.append([InlineKeyboardButton(button, callback_data='main_menu')])
-
-    text += '\n'
     reply_markup = InlineKeyboardMarkup(keyboard)
     if update.callback_query:
         await update.callback_query.edit_message_text(
             text,
-            parse_mode='MarkdownV2',
             reply_markup=reply_markup
         )
-        return SELECTING_IMPRESSION
+        return SELECTING_IMPRESSIONS_CATEGORY
 
     await update.message.reply_text(
         text=text,
-        parse_mode='MarkdownV2',
         reply_markup=reply_markup
     )
-    return SELECTING_IMPRESSION
-
-
-def make_impression_title(impression: Dict) -> str:
-    """Make impression title."""
-    return (
-        f"{impression['number']}. "
-        f"{impression['name']} "
-        f"- {impression['price']}"
-    )
+    return SELECTING_IMPRESSIONS_CATEGORY
 
 
 def normalise_text(text: str) -> str:
@@ -264,6 +250,107 @@ def normalise_text(text: str) -> str:
         new_text += character
         old_character = character
     return new_text
+
+
+async def handle_impressions_categories_menu(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+) -> int:
+    """Handle Impressions Category selecting."""
+    if not update.callback_query:
+        next_state = await handle_unrecognized_impressions_category(
+            update, context
+        )
+        return next_state
+
+    await update.callback_query.answer()
+    if update.callback_query.data == 'main_menu':
+        next_state = await send_main_menu(update, context)
+        return next_state
+
+    impressions_category = update.callback_query.data
+    next_state = await send_impressions_menu(
+        update, context, impressions_category
+    )
+    return next_state
+
+
+async def handle_unrecognized_impressions_category(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+) -> int:
+    """Handle Unrecognized impressions category."""
+    if context.chat_data['language'] == 'russian':
+        text = (
+            'Извини, непонятно, какую категорию впечатлений ты хочешь '
+            'выбрать. Попробуй ещё раз.\n\n'
+        )
+    else:
+        text = (
+            "Sorry, it's not clear which impressions category you want to "
+            "choose. Try again.\n\n"
+        )
+
+    next_state = await send_impressions_categories_menu(update, context, text)
+    return next_state
+
+
+async def send_impressions_menu(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    category: str,
+    text: str = ''
+) -> int:
+    """Send Impressions menu."""
+    impressions = await Database.get_impressions(context.chat_data['language'])
+    if not impressions:
+        if context.chat_data['language'] == 'russian':
+            text = 'Извини, впечатлений пока нет.\n'
+        else:
+            text = 'Sorry, no impressions yet.\n'
+        next_state = await send_main_menu(update, context, text)
+        return next_state
+
+    if context.chat_data['language'] == 'russian':
+        text = (
+            normalise_text(text) +
+            'Выбери впечатление, введи его номер и отправь нам:'
+            '\n\n'
+        )
+    else:
+        text = (
+            normalise_text(text) +
+            "Select an impression, enter its number and send it to us:"
+            "\n\n"
+        )
+
+    context.chat_data['impressions_ids'] = []
+    for impression in impressions:
+        impression_title = normalise_text(make_impression_title(impression))
+        text += f"[{impression_title}]({impression['url']})\n"
+        context.chat_data['impressions_ids'].append(impression['id'])
+
+    if update.callback_query:
+        await update.callback_query.edit_message_text(
+            text,
+            parse_mode='MarkdownV2',
+        )
+        return SELECTING_IMPRESSION
+
+    await update.message.reply_text(
+        text=text,
+        parse_mode='MarkdownV2',
+    )
+    return SELECTING_IMPRESSION
+
+
+def make_impression_title(impression: Dict) -> str:
+    """Make impression title."""
+    return (
+        f"{impression['number']}. "
+        f"{impression['name']} "
+        f"- {impression['price']}"
+    )
 
 
 def calculate_buttons_in_row(buttons_count: int) -> int:
@@ -311,7 +398,7 @@ async def handle_unrecognized_impression(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE
 ) -> int:
-    """Handle unrecognized_impression."""
+    """Handle Unrecognized impression."""
     if context.chat_data['language'] == 'russian':
         text = (
             'Извини, непонятно, какое впечатление ты хочешь '
