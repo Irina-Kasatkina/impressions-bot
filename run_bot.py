@@ -317,12 +317,14 @@ async def send_impressions_menu(
             'Выбери впечатление, введи его номер и отправь нам:'
             '\n\n'
         )
+        button = '‹ Вернуться к выбору категории'
     else:
         text = (
             normalise_text(text) +
             "Select an impression, enter its number and send it to us:"
             "\n\n"
         )
+        button = '‹ Back to category selection'
 
     context.chat_data['impressions_ids'] = []
     for impression in impressions:
@@ -330,10 +332,14 @@ async def send_impressions_menu(
         text += f"[{impression_title}]({impression['url']})\n"
         context.chat_data['impressions_ids'].append(impression['id'])
 
+    keyboard = [[InlineKeyboardButton(button, callback_data='category_menu')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
     if update.callback_query:
         await update.callback_query.edit_message_text(
             text,
             parse_mode='MarkdownV2',
+            reply_markup=reply_markup,
             disable_web_page_preview=True
         )
         return SELECTING_IMPRESSION
@@ -341,6 +347,7 @@ async def send_impressions_menu(
     await update.message.reply_text(
         text=text,
         parse_mode='MarkdownV2',
+        reply_markup=reply_markup,
         disable_web_page_preview=True
     )
     return SELECTING_IMPRESSION
@@ -378,6 +385,12 @@ async def handle_impressions_menu(
     """Handle Impression selecting."""
     if update.callback_query:
         await update.callback_query.answer()
+        if update.callback_query.data == 'category_menu':
+            next_state = await send_impressions_categories_menu(
+                update, context
+            )
+            return next_state
+
         next_state = await handle_unrecognized_impression(update, context)
         return next_state
 
