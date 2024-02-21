@@ -376,21 +376,23 @@ async def handle_impressions_menu(
     context: ContextTypes.DEFAULT_TYPE
 ) -> int:
     """Handle Impression selecting."""
-    if not update.callback_query:
+    if update.callback_query:
+        await update.callback_query.answer()
         next_state = await handle_unrecognized_impression(update, context)
         return next_state
 
-    await update.callback_query.answer()
-
-    if update.callback_query.data == 'main_menu':
-        next_state = await send_main_menu(update, context)
-        return next_state
-
-    impression_id = update.callback_query.data
-    if not impression_id.isnumeric():
+    impression_number = update.message.text.strip()
+    if not impression_number.isnumeric():
         next_state = await handle_unrecognized_impression(update, context)
         return next_state
 
+    impression_index = int(impression_number) - 1
+    impressions_ids = context.chat_data.get('impressions_ids', [])
+    if len(impressions_ids) <= impression_index:
+        next_state = await handle_unrecognized_impression(update, context)
+        return next_state
+
+    impression_id = impressions_ids[impression_index]
     context.chat_data['impression_id'] = impression_id
     next_state = await send_receiving_methods_menu(update, context)
     return next_state
