@@ -220,8 +220,7 @@ class Database():
     def get_impression(self, impression_id: int, language: str) -> Dict:
         """Get impression from database."""
         impression = Impression.objects.filter(
-            id=int(impression_id),
-            availability=True
+            id=int(impression_id)
         ).first()
         if not impression:
             return {}
@@ -229,26 +228,37 @@ class Database():
         if language == 'russian':
             return {
                 'id': impression.id,
-                'number': impression.number,
                 'name': impression.name,
                 'price': f'{impression.price_in_rubles} ₽'
             }
         return {
             'id': impression.id,
-            'number': impression.number,
             'name': impression.english_name,
             'price': f'{impression.price_in_euros} €'
         }
 
     @sync_to_async
-    def get_impressions(self, language: str) -> List[Dict]:
+    def get_impressions(
+        self,
+        language: str,
+        impressions_category: str
+    ) -> List[Dict]:
         """Get impressions from database."""
-        impressions = Impression.objects.filter(availability=True)
+        if impressions_category == 'man':
+            impressions = Impression.objects.filter(for_men=True)
+        elif impressions_category == 'girl':
+            impressions = Impression.objects.filter(for_girls=True)
+        elif impressions_category == 'couple':
+            impressions = Impression.objects.filter(for_couples=True)
+        elif impressions_category == 'all':
+            impressions = Impression.objects.filter(for_all=True)
+        else:
+            return []
+
         if language == 'russian':
             return [
                 {
                     'id': impression.id,
-                    'number': impression.number,
                     'name': impression.name,
                     'price': f'{impression.price_in_rubles} ₽',
                     'url': impression.url_for_russians
@@ -259,7 +269,6 @@ class Database():
         return [
             {
                 'id': impression.id,
-                'number': impression.number,
                 'name': impression.english_name,
                 'price': f'{impression.price_in_euros} €',
                 'url': impression.url_for_english

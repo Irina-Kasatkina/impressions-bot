@@ -269,9 +269,8 @@ async def handle_impressions_categories_menu(
         return next_state
 
     impressions_category = update.callback_query.data
-    next_state = await send_impressions_menu(
-        update, context, impressions_category
-    )
+    context.chat_data['impressions_category'] = impressions_category
+    next_state = await send_impressions_menu(update, context)
     return next_state
 
 
@@ -298,11 +297,13 @@ async def handle_unrecognized_impressions_category(
 async def send_impressions_menu(
     update: Update,
     context: ContextTypes.DEFAULT_TYPE,
-    category: str,
     text: str = ''
 ) -> int:
     """Send Impressions menu."""
-    impressions = await Database.get_impressions(context.chat_data['language'])
+    impressions = await Database.get_impressions(
+        context.chat_data['language'],
+        context.chat_data['impressions_category']
+    )
     if not impressions:
         if context.chat_data['language'] == 'russian':
             text = 'Извини, впечатлений пока нет.\n'
@@ -311,24 +312,49 @@ async def send_impressions_menu(
         next_state = await send_main_menu(update, context, text)
         return next_state
 
+    if context.chat_data['impressions_category'] == 'man':
+        russian_title = 'Это лучшие подарки для мужчин на Бали🔥'
+        english_title = 'These are the best gifts for men in Bali🔥'
+    elif context.chat_data['impressions_category'] == 'girl':
+        russian_title = 'Это лучшие подарки для девушек на Бали 😍'
+        english_title = 'These are the best gifts for girls in Bali 😍'
+    elif context.chat_data['impressions_category'] == 'couple':
+        russian_title = 'Эти подарки идеально подходят для пар ♥'
+        english_title = 'These are perfect gifts for couples ♥'
+    else:
+        russian_title = ''
+        english_title = ''
+
     if context.chat_data['language'] == 'russian':
-        text = (
-            normalise_text(text) +
-            'Выбери впечатление, введи его номер и отправь нам:'
+        if russian_title:
+            text += '*' + russian_title + '*\n\n'
+
+        text += (
+            'Нажимай на впечатление, чтобы прочитать о нём подробнее.\n'
+            'Когда выберешь подходящее, отправь боту его номер, чтобы '
+            'перейти к покупке.'
             '\n\n'
         )
-        button = '‹ Вернуться к выбору категории'
+        button = '‹  Вернуться к выбору категории'
     else:
-        text = (
-            normalise_text(text) +
-            "Select an impression, enter its number and send it to us:"
+        if english_title:
+            text += '*' + english_title + '*\n\n'
+
+        text += (
+            "Click on an impression to read more about it.\n"
+            "When you choose the right one, send the bot its number "
+            "to proceed to purchase."
             "\n\n"
         )
-        button = '‹ Back to category selection'
+        button = '‹  Back to category selection'
 
+    text = normalise_text(text)
     context.chat_data['impressions_ids'] = []
-    for impression in impressions:
-        impression_title = normalise_text(make_impression_title(impression))
+    for impression_number, impression in enumerate(impressions, 1):
+        impression_title = normalise_text(
+            f"{impression_number}. {impression['name']} - "
+            f"{impression['price']}"
+        )
         text += f"[{impression_title}]({impression['url']})\n"
         context.chat_data['impressions_ids'].append(impression['id'])
 
@@ -351,15 +377,6 @@ async def send_impressions_menu(
         disable_web_page_preview=True
     )
     return SELECTING_IMPRESSION
-
-
-def make_impression_title(impression: Dict) -> str:
-    """Make impression title."""
-    return (
-        f"{impression['number']}. "
-        f"{impression['name']} "
-        f"- {impression['price']}"
-    )
 
 
 def calculate_buttons_in_row(buttons_count: int) -> int:
@@ -441,7 +458,7 @@ async def send_receiving_methods_menu(
         context.chat_data['impression_id'],
         context.chat_data['language']
     )
-    impression_title = make_impression_title(impression)
+    impression_title = f"{impression['name']} - {impression['price']}"
     if context.chat_data['language'] == 'russian':
         text = normalise_text(
             f'{text}Отличный выбор! Ты выбрал(а) ' +
@@ -450,8 +467,8 @@ async def send_receiving_methods_menu(
             '*\n\nВ какой форме хочешь получить его?'
         )
         buttons = [
-            '📧 По электронной почте',
-            '📨 В подарочной коробке',
+            '🎁 Сертификат в коробке',
+            '💌 Электронный сертификат',
             '‹ Выбрать другое впечатление',
             '« Вернуться в главное меню'
         ]
@@ -463,23 +480,17 @@ async def send_receiving_methods_menu(
             '*\n\nIn what form do you want to receive it?'
         )
         buttons = [
-            '📧 By email',
-            '📨 In a gift box',
+            '🎁 Certificate in a box',
+            '💌 Electronic certificate',
             '‹ Choose a different impression',
             '« Back to main menu'
         ]
 
     keyboard = [
-        [
-            InlineKeyboardButton(buttons[0], callback_data='email'),
-            InlineKeyboardButton(buttons[1], callback_data='gift_box'),
-        ],
-        [
-            InlineKeyboardButton(buttons[2], callback_data='impression')
-        ],
-        [
-            InlineKeyboardButton(buttons[3], callback_data='main_menu')
-        ]
+        [InlineKeyboardButton(buttons[0], callback_data='gift_box')],
+        [InlineKeyboardButton(buttons[1], callback_data='email')],
+        [InlineKeyboardButton(buttons[2], callback_data='impression')],
+        [InlineKeyboardButton(buttons[3], callback_data='main_menu')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     if update.callback_query:
@@ -597,8 +608,8 @@ async def send_privacy_policy(
     if context.chat_data['language'] == 'russian':
         text = (
             'Спасибо, записали 👌\n\n'
-            'Пожалуйста, ознакомься с *[Политикой конфиденциальности и '
-            f'положением об обработке персональных данных 📇]({policy_url})*'
+            'Пожалуйста, ознакомься с [Политикой конфиденциальности и '
+            f'положением об обработке персональных данных 📇]({policy_url})'
         )
         button = 'Ознакомлен(а)'
     else:
@@ -616,14 +627,16 @@ async def send_privacy_policy(
         await update.callback_query.edit_message_text(
             text=text,
             parse_mode='MarkdownV2',
-            reply_markup=reply_markup
+            reply_markup=reply_markup,
+            disable_web_page_preview=True
         )
         return ACQUAINTED_PRIVACY_POLICY
 
     await update.message.reply_text(
         text=text,
         parse_mode='MarkdownV2',
-        reply_markup=reply_markup
+        reply_markup=reply_markup,
+        disable_web_page_preview=True
     )
     return ACQUAINTED_PRIVACY_POLICY
 
