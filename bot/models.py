@@ -85,7 +85,10 @@ class Impression(models.Model):
     price_in_euros = models.PositiveIntegerField('Цена в Евро')
     url_for_russians = models.URLField('Url русского описания', blank=True)
     url_for_english = models.URLField('Url английского описания', blank=True)
-    availability = models.BooleanField('Доступно в боте', default=True)
+    for_men = models.BooleanField('Для мужчин', default=False)
+    for_girls = models.BooleanField('Для девушек', default=False)
+    for_couples = models.BooleanField('Для пар', default=False)
+    for_all = models.BooleanField('Для всех', default=False)
 
     class Meta:
         ordering = ['number']
