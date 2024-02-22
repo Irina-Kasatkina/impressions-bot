@@ -42,9 +42,13 @@ class ChatDataAdmin(admin.ModelAdmin):
 
 @admin.register(Impression)
 class ImpressionAdmin(admin.ModelAdmin):
-    list_display = ('number', 'name', 'price_in_rubles', 'availability')
+    list_display = (
+        'number', 'name', 'price_in_rubles', 'for_men', 'for_girls',
+        'for_couples', 'for_all'
+    )
     list_display_links = ('name',)
     search_fields = ('name',)
+    list_filter = ('for_men', 'for_girls', 'for_couples', 'for_all')
     readonly_fields = ('id',)
 
     def has_delete_permission(self, request, obj=None):
