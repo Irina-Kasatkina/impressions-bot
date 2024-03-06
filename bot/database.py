@@ -83,7 +83,7 @@ class Database():
         customer_fullname: str,
         customer_phone: str,
         impression_id: int,
-        recipient_fullname: str,
+        recipient_name: str,
         recipient_contact: str,
         email_receiving: bool,
         delivery_method: str = '',
@@ -117,7 +117,7 @@ class Database():
             impression=impression,
             language=order_language,
             customer=customer,
-            recipient_fullname=recipient_fullname,
+            recipient_name=recipient_name,
             recipient_contact=recipient_contact,
             receiving_method=receiving_method,
             delivery_method=delivery_method
@@ -181,37 +181,22 @@ class Database():
         )
 
     @sync_to_async
-    def get_faq_detail(self, faq_id: int, language: str) -> Dict:
-        """Get faq answer from database."""
-        faq_detail = Faq.objects.filter(pk=int(faq_id)).first()
-        if language == 'russian':
-            return {
-                'question': faq_detail.russian_question,
-                'answer': faq_detail.russian_answer
-            }
-        else:
-            return {
-                'question': faq_detail.english_question,
-                'answer': faq_detail.english_answer
-            }
-
-    @sync_to_async
     def get_faq_details(self, language: str) -> List[Dict]:
         """Get faq questions from database."""
         faq_details = Faq.objects.filter(availability=True)
         if language == 'russian':
             return [
                 {
-                    'id': faq_detail.id,
                     'question': faq_detail.russian_question,
+                    'url': faq_detail.russian_url
                 }
                 for faq_detail in faq_details
             ]
 
         return [
             {
-                'id': faq_detail.id,
                 'question': faq_detail.english_question,
+                'url': faq_detail.english_url
             }
             for faq_detail in faq_details
         ]

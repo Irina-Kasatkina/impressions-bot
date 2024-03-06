@@ -63,13 +63,13 @@ class CertificateInline(admin.TabularInline):
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     list_display = (
-        'id', 'number', 'created_at', 'recipient_fullname', 'receiving_method',
+        'id', 'number', 'created_at', 'recipient_name', 'receiving_method',
         'confirmed', 'given_for_delivery', 'delivered'
     )
     list_display_links = ('id', 'created_at')
-    search_fields = ('id', 'number', 'recipient_fullname')
+    search_fields = ('id', 'number', 'recipient_name')
     list_filter = (
-        'recipient_fullname', 'receiving_method', 'confirmed',
+        'recipient_name', 'receiving_method', 'confirmed',
         'given_for_delivery', 'delivered')
     readonly_fields = (
         'id', 'created_at', 'payment_screenshot', 'get_image_preview'

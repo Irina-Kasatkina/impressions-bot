@@ -164,8 +164,8 @@ class Order(models.Model):
         verbose_name='Заказчик',
         related_name='orders',
     )
-    recipient_fullname = models.CharField(
-        'Фамилия и имя адресата',
+    recipient_name = models.CharField(
+        'Имя адресата',
         max_length=256
     )
     recipient_contact = models.CharField('Контакты адресата', max_length=256)
@@ -292,10 +292,10 @@ class SupportApplication(models.Model):
 
 class Faq(models.Model):
     number = models.PositiveIntegerField(r'№ п/п', unique=True)
-    russian_question = models.CharField('Вопрос по-русски', max_length=256)
-    russian_answer = models.TextField('Ответ по-русски')
-    english_question = models.CharField('Вопрос по-английски', max_length=256)
-    english_answer = models.TextField('Ответ по-английски')
+    russian_question = models.CharField('Вопрос на русском', max_length=256)
+    russian_url = models.URLField('Url Ответа на русском', blank=True)
+    english_question = models.CharField('Вопрос на английском', max_length=256)
+    english_url = models.URLField('Ответ на английском', blank=True)
     availability = models.BooleanField('Доступен в боте', default=True)
 
     class Meta:
